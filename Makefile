@@ -102,7 +102,3 @@ dev-setup: ## Setup development environment from scratch
 dev-restart: ## Restart development environment
 	@$(MAKE) down
 	@$(MAKE) dev
-
-# Docker build
-docker-build: ## Build docker image
-	docker build -t $(SERVICE_NAME):latest .
