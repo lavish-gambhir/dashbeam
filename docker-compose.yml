@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: dashbeam_postgres
+    environment:
+      POSTGRES_DB: ${APP_POSTGRES_NAME}
+      POSTGRES_USER: ${APP_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${APP_POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${APP_POSTGRES_PASSWORD}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dashbeam_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dashbeam_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    env_file:
+      - .env
+
+  vlkey:
+    image: valkey/valkey:latest
+    ports:
+      - "6379:6379"
+    environment:
+      VALKEY_DB: ${APP_VALKEY_DB}
+      VALKEY_POOL_SIZE: ${APP_VALKEY_POOL_SIZE}
+      VALKEY_MAX_RETRIES: ${APP_VALKEY_MAX_RETRIES}
+      VALKEY_ADDR: ${APP_VALKEY_ADDR}
+      VALKEY_PASSWORD: ${APP_VALKEY_PASSWORD}
+      VALKEY_CONNECT_TIMEOUT: ${APP_VALKEY_CONN_TIMEOUT}
+    volumes:
+      - valkey_data:/data
+    networks:
+      - dashbeam_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    env_file:
+      - .env
+
+  api-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dashbeam_api_server
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      vlkey:
+        condition: service_healthy
+    networks:
+      - dashbeam_network
+
+networks:
+  dashbeam_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  valkey_data:
+    driver: local

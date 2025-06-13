@@ -1,0 +1,13 @@
+env: "development"
+server:
+  debug: true
+  port: 8080
+  host: "0.0.0.0"
+database:
+  host: "localhost"
+  port: 5432
+  name: "dashbeam_db"
+  user: "postgres"
+  password: "postgres"
+  sslmode: "disable"
+  timezone: "UTC"

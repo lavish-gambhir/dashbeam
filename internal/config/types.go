@@ -7,17 +7,18 @@ import (
 )
 
 type AppConfig struct {
-	Environment string          `mapstructure:"environment"` // e.g., "development", "production", "local"
-	Server      ServerConfig    `mapstructure:"server"`
-	Database    DBConfig        `mapstructure:"database"`
-	Auth        AuthConfig      `mapstructure:"auth"`
-	Redis       RedisConfig     `mapstructure:"redis"`
-	Quiz        QuizConfig      `mapstructure:"quiz"`
-	Analytics   AnalyticsConfig `mapstructure:"analytics"`
-	Reporting   ReportingConfig `mapstructure:"reporting"`
+	Env       Environment     `mapstructure:"environment"` // e.g., "development", "production", "local"
+	Server    ServerConfig    `mapstructure:"server"`
+	Database  DBConfig        `mapstructure:"database"`
+	Auth      AuthConfig      `mapstructure:"auth"`
+	Redis     RedisConfig     `mapstructure:"redis"`
+	Quiz      QuizConfig      `mapstructure:"quiz"`
+	Analytics AnalyticsConfig `mapstructure:"analytics"`
+	Reporting ReportingConfig `mapstructure:"reporting"`
 }
 
 type ServerConfig struct {
+	Host         string        `mapstructure:"host"`
 	Port         string        `mapstructure:"port"`
 	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout time.Duration `mapstructure:"write_timeout"`

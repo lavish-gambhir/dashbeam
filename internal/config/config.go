@@ -10,25 +10,47 @@ import (
 )
 
 const (
-	_DefaultConfigFileName = "local"
 	// EnvPrefix is the prefix for environment variables, e.g., APP_SERVER_PORT.
 	_EnvPrefix = "APP"
 )
+
+type Environment string
+
+const (
+	Dev        Environment = "development"
+	Staging                = "staging"
+	Production             = "production"
+)
+
+func FromString(str string) Environment {
+	switch str {
+	case "local", "dev", "development":
+		return Dev
+	case "prod", "production":
+		return Production
+	case "stag", "staging":
+		return Staging
+	default:
+		return Dev
+	}
+
+}
+
+func GetEnv() Environment {
+	e := os.Getenv("APP_ENV")
+	return FromString(e)
+}
 
 var appConfig *AppConfig
 
 func LoadConfig() (*AppConfig, error) {
 	v := viper.New()
 
-	v.SetConfigName(_DefaultConfigFileName) // Name of config file (without extension)
-	v.SetConfigType("yaml")                 // Type of config file
-	v.AddConfigPath("./configs")            // Search in the 'configs' directory
-	v.AddConfigPath(".")                    // Search in the current directory
+	env := GetEnv()
+	v.SetConfigName(string(env))
+	v.SetConfigType("yaml")
+	v.AddConfigPath("./configs")
 
-	env := os.Getenv(_EnvPrefix + "_ENV")
-	if env == "" {
-		env = "development"
-	}
 	v.Set("environment", env)
 	v.SetConfigFile(fmt.Sprintf("configs/%s.yaml", env))
 	if _, err := os.Stat(fmt.Sprintf("configs/%s.yaml", env)); err == nil {
@@ -53,12 +75,10 @@ func LoadConfig() (*AppConfig, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_")) // Replaces `.` in config keys with `_` for env vars
 	v.AutomaticEnv()
 
-	setDefaults(v)
-
 	if err := v.Unmarshal(&appConfig); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
-	log.Printf("Running in %s environment", appConfig.Environment)
+	log.Printf("Running in %s environment", appConfig.Env)
 	log.Println("Configuration loaded successfully!")
 	return appConfig, nil
 }
@@ -68,8 +88,4 @@ func GetConfig() (*AppConfig, error) {
 		return nil, fmt.Errorf("Configuration not loaded. Call config.LoadConfig() first.")
 	}
 	return appConfig, nil
-}
-
-func setDefaults(v *viper.Viper) {
-	v.SetDefault("server.port", "8080")
 }
