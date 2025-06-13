@@ -1,0 +1,12 @@
+go 1.23.3
+
+use (
+	.
+	./services/analytics
+	./services/auth
+	./services/quiz
+	./services/reporting
+	./shared/database
+	./shared/events
+	./pkg/apperr
+)
