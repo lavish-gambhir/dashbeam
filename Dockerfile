@@ -2,10 +2,8 @@
 FROM golang:1.23.3-alpine AS builder
 LABEL maintainer="lavish_gambhir@icloud.com"
 
-# Install build dependencies
 RUN apk update && apk add --no-cache build-base
 
-# Set working directory
 WORKDIR /app
 
 COPY go.work go.work.sum ./
@@ -21,7 +19,7 @@ RUN go mod download
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/server ./cmd/server
 
-# Build migrator separately (utility tool)
+# Build migrator separately
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/migrator ./cmd/migrator
 
 # Final stage
@@ -35,5 +33,7 @@ RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
 RUN chown -R appuser:appgroup /app
 USER appuser
 EXPOSE 8080
+
+# ENV APP_ENV=staging // TODO
 
 CMD ["./bin/server"]

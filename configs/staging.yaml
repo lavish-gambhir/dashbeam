@@ -1,3 +1,12 @@
-application:
+env: "staging"
+server:
   port: 8080
-  host: 0.0.0.0
+  host: "0.0.0.0"
+database:
+  host:
+  port:
+  name:
+  user:
+  password:
+  sslmode: "require"
+  timezone:
