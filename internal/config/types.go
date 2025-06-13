@@ -1,6 +1,10 @@
 package config
 
-import "time"
+import (
+	"fmt"
+	"net/url"
+	"time"
+)
 
 type AppConfig struct {
 	Environment string          `mapstructure:"environment"` // e.g., "development", "production", "local"
@@ -52,4 +56,17 @@ type AnalyticsConfig struct {
 }
 
 type ReportingConfig struct {
+}
+
+func (d *DBConfig) Address() string {
+	dsn := url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(d.User, d.Password),
+		Host:   fmt.Sprintf("%s:%d", d.Host, d.Port),
+		Path:   d.DBName,
+	}
+	q := dsn.Query()
+	q.Add("sslmode", d.SSLMode)
+	dsn.RawQuery = q.Encode()
+	return dsn.String()
 }
