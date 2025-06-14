@@ -44,10 +44,12 @@ type AuthConfig struct {
 }
 
 type RedisConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	Password string `mapstructure:"password"` // TODO: fetch from secretsmanager
-	DB       int    `mapstructure:"db"`
+	DB         int           `mapstructure:"db"`
+	PoolSize   int           `mapstructure:"pool_size"`
+	MaxRetries int           `mapstructure:"max_retries"`
+	Addr       string        `mapstructure:"addr"`
+	Password   string        `mapstructure:"password"` // TODO: fetch from secretsmanager
+	Timeout    time.Duration `mapstructure:"timeout"`
 }
 
 type QuizConfig struct {

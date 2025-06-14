@@ -3,13 +3,12 @@ package logger
 import (
 	"log/slog"
 	"os"
-
-	"github.com/lavish-gambhir/dashbeam/internal/config"
 )
 
-func NewSlogger(cnf *config.AppConfig) *slog.Logger {
+func NewSlogger(env string) *slog.Logger {
 	level := slog.LevelDebug
-	if cnf.Env == config.Production {
+
+	if env == "production" || env == "prod" {
 		level = slog.LevelInfo
 	}
 	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})

@@ -78,7 +78,7 @@ func Is(err error, code ErrCode) bool {
 
 func GetCode(err error) ErrCode {
 	if err == nil {
-		return NO_ERROR
+		return NoErr
 	}
 	if ae, ok := err.(*Error); ok {
 		return ae.Code

@@ -4,7 +4,7 @@ type ErrCode string
 
 const (
 	// Common Error Codes
-	NO_ERROR           ErrCode = "NO_ERROR"
+	NoErr              ErrCode = "NO_ERROR"
 	Unknown            ErrCode = "UNKNOWN"
 	Internal           ErrCode = "INTERNAL"
 	BadRequest         ErrCode = "BAD_REQUEST"
@@ -31,4 +31,11 @@ const (
 	ValidationFailed     ErrCode = "VALIDATION_FAILED"
 	InvalidFormat        ErrCode = "VALIDATION_INVALID_FORMAT"
 	MissingRequiredField ErrCode = "VALIDATION_MISSING_REQUIRED_FIELD"
+	JSONEncodingFailed   ErrCode = "JSON_ENCODING_FAILED"
+	JSONDecodingFailed   ErrCode = "JSON_DECODING_FAILED"
+
+	// Redis Error Codes
+	RedisPipeExecFailed ErrCode = "REDIS_PIPE_EXEC_FAILED"
+	RedisNoEvent        ErrCode = "REDIS_NO_EVENT"
+	RedisUnknown        ErrCode = "UNKNOWN_REDIS_ERR"
 )

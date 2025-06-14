@@ -10,7 +10,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/golang-migrate/migrate/v4/source/github"
-	"github.com/lavish-gambhir/dashbeam/internal/config"
+	"github.com/lavish-gambhir/dashbeam/shared/config"
 )
 
 const (
