@@ -2,11 +2,13 @@ go 1.23.3
 
 use (
 	.
+	./pkg/apperr
+	./pkg/logger
+	./pkg/utils
 	./services/analytics
 	./services/auth
+	./services/ingestion
 	./services/quiz
 	./services/reporting
-	./shared/database
-	./shared/events
-	./pkg/apperr
+	./shared
 )

@@ -8,7 +8,7 @@ import (
 	"github.com/lavish-gambhir/dashbeam/pkg/apperr"
 )
 
-func New(ctx context.Context, conf *config.AppConfig) (*pgxpool.Pool, error) {
+func NewPostgres(ctx context.Context, conf *config.AppConfig) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(ctx, conf.Database.Address())
 	if err != nil {
 		return nil, apperr.Wrap(err, apperr.DBConnectionFailed, "pgxpool.New")

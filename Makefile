@@ -24,7 +24,6 @@ dev: ## Start development environment with docker-compose
 	@echo "Starting development environment..."
 	docker-compose -f $(COMPOSE_FILE) up -d
 	@echo "Waiting for postgres to be ready..."
-	@sleep 5
 	@$(MAKE) migrate
 	@$(MAKE) run
 
