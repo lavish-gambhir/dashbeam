@@ -164,9 +164,6 @@ func (r *UserRepository) CreateOrUpdateUserFromEvent(ctx context.Context, event 
 	if existingUser == nil {
 		user := &models.User{
 			ID:                     userID,
-			Email:                  extractEmailFromPayload(event.Payload),
-			Name:                   extractNameFromPayload(event.Payload),
-			Role:                   extractRoleFromPayload(event.Payload),
 			SchoolID:               schoolID,
 			FirstSeenAt:            event.Timestamp,
 			LastSeenAt:             event.Timestamp,
@@ -177,6 +174,25 @@ func (r *UserRepository) CreateOrUpdateUserFromEvent(ctx context.Context, event 
 			UpdatedAt:              now,
 		}
 
+		switch payload := event.Payload.(type) {
+		case streaming.UserLoginPayload:
+			if payload.Email != nil {
+				user.Email = *payload.Email
+			}
+			if payload.Name != nil {
+				user.Name = *payload.Name
+			}
+			if payload.Role != nil {
+				user.Role = *payload.Role
+			} else {
+				user.Role = string(models.UserRoleStudent)
+			}
+		default:
+			// Default values if no user data in payload
+			user.Email = ""
+			user.Name = ""
+			user.Role = string(models.UserRoleStudent)
+		}
 		return r.CreateUser(ctx, user)
 	}
 

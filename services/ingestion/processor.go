@@ -34,6 +34,10 @@ func (h *handler) processBatchEvents(ctx context.Context, events []streaming.Eve
 			return nil, apperr.Wrapf(err, apperr.ValidationFailed, "validation failed for batch item %d", i)
 		}
 
+		if err := event.Payload.Validate(); err != nil {
+			return nil, apperr.Wrapf(err, apperr.ValidationFailed, "payload validation failed for batch item %d", i)
+		}
+
 		if err := h.processOperationalData(ctx, event); err != nil {
 			h.logger.Warn("failed to update operational data", "event_id", event.ID.String(), "error", err)
 			// do not fail: Continue processing other events
@@ -52,9 +56,7 @@ func (h *handler) processBatchEvents(ctx context.Context, events []streaming.Eve
 	return eventIDs, nil
 }
 
-// processSingleEvent processes a single event
 func (h *handler) processSingleEvent(ctx context.Context, event streaming.Event) (string, error) {
-	// Set event ID if not provided
 	if event.ID == uuid.Nil {
 		id, err := uuid.NewV7()
 		if err != nil {
@@ -63,14 +65,15 @@ func (h *handler) processSingleEvent(ctx context.Context, event streaming.Event)
 		event.ID = id
 	}
 
-	// Set timestamp if not provided
 	if event.Timestamp.IsZero() {
 		event.Timestamp = time.Now().UTC()
 	}
 
-	// Validate event
 	if err := event.Validate(); err != nil {
 		return "", apperr.Wrap(err, apperr.ValidationFailed, "event validation failed")
+	}
+	if err := event.Payload.Validate(); err != nil {
+		return "", apperr.Wrapf(err, apperr.ValidationFailed, "%s: %s", "event payload validation failed for event", event.ID.String())
 	}
 
 	// Process operational data updates
@@ -104,68 +107,65 @@ func (h *handler) processOperationalData(ctx context.Context, event streaming.Ev
 }
 
 func (h *handler) processQuizAnswerSubmitted(ctx context.Context, event streaming.Event) error {
-	sessionID, ok := event.Payload["session_id"].(string)
+	payload, ok := event.Payload.(streaming.QuizAnswerSubmittedPayload)
 	if !ok {
-		return apperr.New(apperr.ValidationFailed, "missing session_id in quiz answer event")
+		return apperr.New(apperr.ValidationFailed, "invalid payload type for quiz answer submitted event")
 	}
-
-	isCorrect, _ := event.Payload["is_correct"].(bool)
-	responseTimeMS, _ := event.Payload["response_time_ms"].(float64)
 
 	score := 0.0
 	questionsCorrect := 0
-	if isCorrect {
+	if payload.IsCorrect != nil && *payload.IsCorrect {
 		score = 1.0
 		questionsCorrect = 1
 	}
 
 	return h.quizRepo.UpdateParticipantProgress(
 		ctx,
-		sessionID,
+		payload.SessionID.String(),
 		event.UserID.String(),
 		score,
 		1, // questionsAnswered
 		questionsCorrect,
-		int(responseTimeMS),
+		payload.ResponseTimeMS,
 	)
 }
 
 func (h *handler) processQuizSessionCompleted(ctx context.Context, event streaming.Event) error {
-	sessionID, ok := event.Payload["session_id"].(string)
+	payload, ok := event.Payload.(streaming.QuizSessionCompletedPayload)
 	if !ok {
-		return apperr.New(apperr.ValidationFailed, "missing session_id in quiz completion event")
+		return apperr.New(apperr.ValidationFailed, "invalid payload type for quiz session completed event")
 	}
-
-	totalScore, _ := event.Payload["total_score"].(float64)
-	maxScore, _ := event.Payload["max_score"].(float64)
-	completionTimeMS, _ := event.Payload["completion_time_ms"].(float64)
 
 	return h.quizRepo.CompleteParticipantSession(
 		ctx,
-		sessionID,
+		payload.SessionID.String(),
 		event.UserID.String(),
-		totalScore,
-		maxScore,
-		int(completionTimeMS/1000), // Convert to seconds
+		payload.TotalScore,
+		payload.MaxScore,
+		payload.CompletionTimeMS/1000, // Convert to seconds
 	)
 }
 
 func (h *handler) processUserLogin(ctx context.Context, event streaming.Event) error {
-	// Create or update user from event
+	payload, ok := event.Payload.(streaming.UserLoginPayload)
+	if !ok {
+		return apperr.New(apperr.ValidationFailed, "invalid payload type for user login event")
+	}
+
 	user := &models.User{
 		ID:         event.UserID.String(),
 		SchoolID:   event.SchoolID.String(),
 		LastSeenAt: event.Timestamp,
 	}
 
-	if email, ok := event.Payload["email"].(string); ok {
-		user.Email = email
+	if payload.Email != nil {
+		user.Email = *payload.Email
 	}
-	if name, ok := event.Payload["name"].(string); ok {
-		user.Name = name
+	if payload.Name != nil {
+		user.Name = *payload.Name
 	}
-	if role, ok := event.Payload["role"].(string); ok {
-		user.Role = role
+	if payload.Role != nil {
+		user.Role = *payload.Role
 	} else {
 		user.Role = string(models.UserRoleStudent) // Default
 	}

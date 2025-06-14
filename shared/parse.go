@@ -1,12 +1,17 @@
 package shared
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/lavish-gambhir/dashbeam/shared/context"
 )
+
+// TODO: maybe these fns belong in pkg/utils?
+
+var errInvalidID = errors.New("invalid uuid")
 
 // ParseUserID extracts the userID from the logged in user context.
 func ParseUserID(r *http.Request) (uuid.UUID, error) {
@@ -23,14 +28,14 @@ func ParseUserID(r *http.Request) (uuid.UUID, error) {
 }
 
 // ParseUUID parses generic uuids.
-func ParseUUID(id string) uuid.UUID {
+func ParseUUID(id string) (uuid.UUID, error) {
 	nilID := uuid.Nil
 	if id == "" {
-		return nilID
+		return nilID, errInvalidID
 	}
 	uid, err := uuid.Parse(id)
 	if err != nil {
-		return nilID
+		return nilID, errInvalidID
 	}
-	return uid
+	return uid, nil
 }

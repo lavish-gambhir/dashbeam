@@ -20,8 +20,3 @@ type EventResponse struct {
 	Processed int       `json:"processed"`
 	Timestamp time.Time `json:"timestamp"`
 }
-
-type HealthResponse struct {
-	Status    string    `json:"status"`
-	Timestamp time.Time `json:"timestamp"`
-}

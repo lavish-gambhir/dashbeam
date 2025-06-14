@@ -1,9 +1,12 @@
 package streaming
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	sharedutil "github.com/lavish-gambhir/dashbeam/shared"
 )
 
 type EventType string
@@ -57,15 +60,15 @@ func (a AppType) String() string {
 
 // Event - a generic analytics event
 type Event struct {
-	ID          uuid.UUID      `json:"event_id"`
-	Type        EventType      `json:"event_type"`
-	Timestamp   time.Time      `json:"timestamp"`
-	UserID      uuid.UUID      `json:"user_id"`
-	SchoolID    uuid.UUID      `json:"school_id"`
-	ClassroomID *uuid.UUID     `json:"classroom_id,omitempty"`
-	AppType     AppType        `json:"app_type"`
-	Payload     map[string]any `json:"payload"`
-	Metadata    Metadata       `json:"metadata"`
+	ID          uuid.UUID    `json:"event_id"`
+	Type        EventType    `json:"event_type"`
+	Timestamp   time.Time    `json:"timestamp"`
+	UserID      uuid.UUID    `json:"user_id"`
+	SchoolID    uuid.UUID    `json:"school_id"`
+	ClassroomID *uuid.UUID   `json:"classroom_id,omitempty"`
+	AppType     AppType      `json:"app_type"`
+	Payload     EventPayload `json:"payload"`
+	Metadata    Metadata     `json:"metadata"`
 }
 
 // Metadata - technical metadata about the event
@@ -138,4 +141,102 @@ func (e *Event) IsSystemEvent() bool {
 
 func (e *Event) GetTopic() string {
 	return GetTopicForEventType(e.Type)
+}
+
+// eventJSON is used for custom JSON marshaling/unmarshaling
+type eventJSON struct {
+	ID          string                 `json:"event_id"`
+	Type        EventType              `json:"event_type"`
+	Timestamp   time.Time              `json:"timestamp"`
+	UserID      string                 `json:"user_id"`
+	SchoolID    string                 `json:"school_id"`
+	ClassroomID *string                `json:"classroom_id,omitempty"`
+	AppType     AppType                `json:"app_type"`
+	Payload     map[string]interface{} `json:"payload"`
+	Metadata    Metadata               `json:"metadata"`
+}
+
+func (e Event) MarshalJSON() ([]byte, error) {
+	// Convert payload to map
+	payloadBytes, err := json.Marshal(e.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	var payloadMap map[string]interface{}
+	if err := json.Unmarshal(payloadBytes, &payloadMap); err != nil {
+		return nil, fmt.Errorf("failed to convert payload to map: %w", err)
+	}
+
+	// Convert UUIDs to strings and prepare classroom ID
+	var classroomIDStr *string
+	if e.ClassroomID != nil {
+		str := e.ClassroomID.String()
+		classroomIDStr = &str
+	}
+
+	eventData := eventJSON{
+		ID:          e.ID.String(),
+		Type:        e.Type,
+		Timestamp:   e.Timestamp,
+		UserID:      e.UserID.String(),
+		SchoolID:    e.SchoolID.String(),
+		ClassroomID: classroomIDStr,
+		AppType:     e.AppType,
+		Payload:     payloadMap,
+		Metadata:    e.Metadata,
+	}
+
+	return json.Marshal(eventData)
+}
+
+func (e *Event) UnmarshalJSON(data []byte) error {
+	var eventData eventJSON
+	if err := json.Unmarshal(data, &eventData); err != nil {
+		return fmt.Errorf("failed to unmarshal event data: %w", err)
+	}
+
+	// Parse UUIDs
+	eventID, err := sharedutil.ParseUUID(eventData.ID)
+	if err != nil && eventData.ID != "" { // Allow empty event_id
+		return fmt.Errorf("invalid event_id: %w", err)
+	}
+
+	userID, err := sharedutil.ParseUUID(eventData.UserID)
+	if err != nil {
+		return fmt.Errorf("invalid user_id: %w", err)
+	}
+
+	schoolID, err := sharedutil.ParseUUID(eventData.SchoolID)
+	if err != nil {
+		return fmt.Errorf("invalid school_id: %w", err)
+	}
+
+	var classroomID *uuid.UUID
+	if eventData.ClassroomID != nil {
+		cid, err := sharedutil.ParseUUID(*eventData.ClassroomID)
+		if err != nil {
+			return fmt.Errorf("invalid classroom_id: %w", err)
+		}
+		classroomID = &cid
+	}
+
+	// Parse payload based on event type
+	payload, err := PayloadFromMap(eventData.Type, eventData.Payload)
+	if err != nil {
+		return fmt.Errorf("failed to parse payload for event type %s: %w", eventData.Type, err)
+	}
+
+	// Set all fields
+	e.ID = eventID
+	e.Type = eventData.Type
+	e.Timestamp = eventData.Timestamp
+	e.UserID = userID
+	e.SchoolID = schoolID
+	e.ClassroomID = classroomID
+	e.AppType = eventData.AppType
+	e.Payload = payload
+	e.Metadata = eventData.Metadata
+
+	return nil
 }
