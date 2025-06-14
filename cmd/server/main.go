@@ -85,19 +85,23 @@ func setupApp(ctx context.Context, cfg *config.AppConfig, pool *pgxpool.Pool, lo
 		ingestionSvc: ingestionService,
 	}
 
-	app.registerRoutes()
+	app.registerRoutes(cfg, logger)
 
 	return app, nil
 }
 
-func (a *App) registerRoutes() {
-	http.HandleFunc("/", index)
+func (a *App) registerRoutes(cfg *config.AppConfig, logger *slog.Logger) {
+	authMiddleware := middleware.NewAuthMiddleware(cfg.Auth, logger)
+
+	// Public routes
 	http.HandleFunc("/healthz", handlers.HealthCheckHandler)
 	http.HandleFunc("/readyz", handlers.ReadyzHandler)
-
-	// init service routes
 	a.authSvc.RegisterRoutes(a.mux, "/auth")
-	a.ingestionSvc.RegisterRoutes(a.mux, "/events/")
+
+	// Protected routes (require JWT)
+	protectedMux := http.NewServeMux()
+	a.ingestionSvc.RegisterRoutes(protectedMux, "/events")
+	a.mux.Handle("/events/", authMiddleware.RequireAuth(protectedMux))
 }
 
 func (a *App) Start(ctx context.Context, logger *slog.Logger) <-chan error {

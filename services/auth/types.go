@@ -23,12 +23,11 @@ type DashboardLoginRequest struct {
 }
 
 type DashboardLoginResponse struct {
-	Success     bool                     `json:"success"`
-	User        *models.DashboardUser    `json:"user,omitempty"`
-	Session     *models.DashboardSession `json:"session,omitempty"`
-	AccessToken string                   `json:"access_token,omitempty"`
-	ExpiresAt   time.Time                `json:"expires_at,omitempty"`
-	Error       string                   `json:"error,omitempty"`
+	Success   bool                     `json:"success"`
+	User      *models.DashboardUser    `json:"user,omitempty"`
+	Session   *models.DashboardSession `json:"session,omitempty"`
+	ExpiresAt time.Time                `json:"expires_at,omitempty"`
+	Error     string                   `json:"error,omitempty"`
 }
 
 type CurrentUserResponse struct {

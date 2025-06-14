@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -38,23 +39,27 @@ func (h *handler) handleValidateJWT(w http.ResponseWriter, r *http.Request) {
 	reqID, _ := sharedcontext.GetRequestID(ctx)
 	logger := h.logger.With("fn", "handleValidateJWT").With("requestID", reqID)
 
-	if r.Method != http.MethodPost {
+	if r.Method != http.MethodGet {
 		utils.WriteJSONError(w, apperr.New(apperr.BadRequest, "method not allowed"), http.StatusMethodNotAllowed)
 		return
 	}
 
-	var req ValidateJWTRequest
-	if err := utils.FromJson(r.Body, &req); err != nil {
-		utils.WriteJSONError(w, apperr.Wrap(err, apperr.BadRequest, "invalid request body"), http.StatusBadRequest)
-		return
-	}
-
-	if req.Token == "" {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
 		utils.WriteJSONError(w, apperr.New(apperr.BadRequest, "token is required"), http.StatusBadRequest)
 		return
 	}
 
-	userContext, err := h.validateMobileJWT(req.Token)
+	token := strings.TrimPrefix(authHeader, "Bearer ")
+	if token == authHeader {
+		logger.Warn("invalid authorization header format",
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path))
+		utils.WriteJSONError(w, apperr.New(apperr.Unauthorized, "bearer token required"), http.StatusUnauthorized)
+		return
+	}
+
+	userContext, err := h.validateMobileJWT(token)
 	if err != nil {
 		logger.Warn("JWT validation failed", slog.Any("error", err))
 		utils.WriteJSONSuccess(w, ValidateJWTResponse{
@@ -138,12 +143,12 @@ func (h *handler) handleDashboardLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger.Info("successful dashboard login", slog.String("username", user.Username))
+	w.Header().Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 	utils.WriteJSONSuccess(w, DashboardLoginResponse{
-		Success:     true,
-		User:        user,
-		Session:     session,
-		AccessToken: accessToken,
-		ExpiresAt:   expiresAt,
+		Success:   true,
+		User:      user,
+		Session:   session,
+		ExpiresAt: expiresAt,
 	})
 }
 

@@ -40,6 +40,14 @@ func (h *handler) handleBatchEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userContext, ok := sharedcontext.GetUserContext(ctx)
+	if !ok {
+		logger.Error("user context not found - middleware not applied correctly")
+		utils.WriteJSONError(w, apperr.New(apperr.Unauthorized, "authentication context missing"), http.StatusUnauthorized)
+		return
+	}
+	logger = logger.With("userID", userContext.UserID.String()).With("schoolID", userContext.SchoolID.String())
+
 	var req BatchEventsRequest
 
 	if err := utils.FromJson(r.Body, &req); err != nil {
