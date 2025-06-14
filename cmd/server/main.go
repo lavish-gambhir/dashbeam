@@ -16,9 +16,11 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/lavish-gambhir/dashbeam/cmd/server/handlers"
 	"github.com/lavish-gambhir/dashbeam/pkg/logger"
+	"github.com/lavish-gambhir/dashbeam/services/analytics"
 	"github.com/lavish-gambhir/dashbeam/services/auth"
 	"github.com/lavish-gambhir/dashbeam/services/ingestion"
 	"github.com/lavish-gambhir/dashbeam/shared/config"
+	"github.com/lavish-gambhir/dashbeam/shared/database/clickhouse"
 	"github.com/lavish-gambhir/dashbeam/shared/database/postgres"
 	"github.com/lavish-gambhir/dashbeam/shared/database/repositories"
 	"github.com/lavish-gambhir/dashbeam/shared/middleware"
@@ -33,6 +35,7 @@ type App struct {
 
 	authSvc      auth.Service
 	ingestionSvc ingestion.Service
+	analyticsSvc analytics.Service
 }
 
 func index(w http.ResponseWriter, _ *http.Request) {
@@ -65,6 +68,23 @@ func setupApp(ctx context.Context, cfg *config.AppConfig, pool *pgxpool.Pool, lo
 		logger,
 		0,
 	)
+
+	// Create ClickHouse connection
+	clickhouseDB, err := clickhouse.New(cfg.Analytics, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to ClickHouse: %v", err)
+	}
+
+	// Create analytics dependencies
+	clickhouseRepo := repositories.NewClickHouseRepository(clickhouseDB)
+	eventProcessor := analytics.NewEventProcessor(clickhouseRepo, logger, cfg.Analytics.BatchSize)
+
+	analyticsService := analytics.New(
+		q, // message queue
+		eventProcessor,
+		cfg.Analytics,
+		logger,
+	)
 	//=== deps [end] ====
 
 	server := &http.Server{
@@ -83,6 +103,7 @@ func setupApp(ctx context.Context, cfg *config.AppConfig, pool *pgxpool.Pool, lo
 		mux:          mux,
 		authSvc:      authService,
 		ingestionSvc: ingestionService,
+		analyticsSvc: analyticsService,
 	}
 
 	app.registerRoutes(cfg, logger)
@@ -108,10 +129,23 @@ func (a *App) Start(ctx context.Context, logger *slog.Logger) <-chan error {
 	errC := make(chan error)
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
+	// Start analytics service as background worker
+	go func() {
+		if err := a.analyticsSvc.Start(ctx); err != nil {
+			logger.Error("failed to start analytics service", slog.Any("error", err))
+			errC <- err
+		}
+	}()
+
 	go func() {
 		<-ctx.Done()
 
 		logger.Info("=== dashbeam shutting down ===")
+
+		if err := a.analyticsSvc.Stop(); err != nil {
+			logger.Error("failed to stop analytics service", slog.Any("error", err))
+		}
+
 		ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer func() {
 			a.pool.Close()

@@ -57,15 +57,49 @@ services:
         condition: service_healthy
       vlkey:
         condition: service_healthy
+      clickhouse:
+        condition: service_healthy
     networks:
       - dashbeam_network
 
-networks:
-  dashbeam_network:
-    driver: bridge
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: dashbeam_clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      - CLICKHOUSE_DB=${APP_CLICKHOUSE_DB}
+      - CLICKHOUSE_USER=${APP_CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${APP_CLICKHOUSE_PASSWORD}
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    networks:
+      - dashbeam_network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "clickhouse",
+          "client",
+          "--host",
+          "localhost",
+          "--port",
+          "9000",
+          "--query",
+          "SELECT 1",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
     driver: local
   valkey_data:
     driver: local
+  clickhouse_data:
+    driver: local
+networks:
+  dashbeam_network:
+    driver: bridge

@@ -56,6 +56,11 @@ type QuizConfig struct {
 }
 
 type AnalyticsConfig struct {
+	ClickHouseURL      string        `mapstructure:"clickhouse_url"`
+	ProcessingInterval time.Duration `mapstructure:"processing_interval"`
+	MetricsInterval    time.Duration `mapstructure:"metrics_interval"`
+	BatchSize          uint          `mapstructure:"batch_size"`
+	MaxRetries         uint          `mapstructure:"max_retries"`
 }
 
 type ReportingConfig struct {

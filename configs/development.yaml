@@ -14,3 +14,9 @@ database:
 auth:
   jwt_secret_key: ""
   access_token_expiry: 24h
+analytics:
+  clickhouse_url: "localhost:9000"
+  processing_interval: 10s
+  metrics_interval: 1h
+  batch_size: 1000
+  max_retries: 3
