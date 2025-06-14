@@ -23,6 +23,7 @@ func New(cfg config.AnalyticsConfig, logger *slog.Logger) (*DB, error) {
 		Settings: clickhouse.Settings{
 			"max_execution_time": 60,
 		},
+		// TODO: using default config for test, pull this from config
 		Auth: clickhouse.Auth{
 			Database: "dashbeam_analytics",
 			Username: "default",
