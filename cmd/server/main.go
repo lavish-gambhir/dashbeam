@@ -16,6 +16,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/lavish-gambhir/dashbeam/cmd/server/handlers"
 	"github.com/lavish-gambhir/dashbeam/pkg/logger"
+	"github.com/lavish-gambhir/dashbeam/services/auth"
 	"github.com/lavish-gambhir/dashbeam/services/ingestion"
 	"github.com/lavish-gambhir/dashbeam/shared/config"
 	"github.com/lavish-gambhir/dashbeam/shared/database/postgres"
@@ -30,6 +31,7 @@ type App struct {
 	server *http.Server
 	mux    *http.ServeMux
 
+	authSvc      auth.Service
 	ingestionSvc ingestion.Service
 }
 
@@ -43,11 +45,18 @@ func setupApp(ctx context.Context, cfg *config.AppConfig, pool *pgxpool.Pool, lo
 	//=== deps [start] ====
 	pgdb := postgres.New(pool, logger)
 	userRepo := repositories.NewUserRepository(pgdb)
+	dashboardUserRepo := repositories.NewDashboardUserRepository(pgdb)
 	quizRepo := repositories.NewQuizRepository(pgdb)
 	q, err := streaming.NewRedisQueue(ctx, cfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init redis queue: %v", err)
 	}
+
+	authService := auth.New(
+		dashboardUserRepo,
+		cfg.Auth,
+		logger,
+	)
 
 	ingestionService := ingestion.New(
 		userRepo,
@@ -72,6 +81,7 @@ func setupApp(ctx context.Context, cfg *config.AppConfig, pool *pgxpool.Pool, lo
 		pool:         pool,
 		server:       server,
 		mux:          mux,
+		authSvc:      authService,
 		ingestionSvc: ingestionService,
 	}
 
@@ -86,6 +96,7 @@ func (a *App) registerRoutes() {
 	http.HandleFunc("/readyz", handlers.ReadyzHandler)
 
 	// init service routes
+	a.authSvc.RegisterRoutes(a.mux, "/auth")
 	a.ingestionSvc.RegisterRoutes(a.mux, "/events/")
 }
 

@@ -7,6 +7,7 @@ require (
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/joho/godotenv v1.5.1
 	github.com/lavish-gambhir/dashbeam/pkg/logger v0.0.0-00010101000000-000000000000
+	github.com/lavish-gambhir/dashbeam/services/auth v0.0.0-00010101000000-000000000000
 	github.com/lavish-gambhir/dashbeam/services/ingestion v0.0.0-00010101000000-000000000000
 	github.com/lavish-gambhir/dashbeam/shared v0.0.0
 )
